@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tabla CRUD Flask</title>
+    <style>
+        table { width: 50%; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 10px; text-align: center; }
+        .btn-del { color: red; }
+        .btn-save { color: green; }
+    </style>
+</head>
+<body>
+    <h2>Lista de Usuarios</h2>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Edad</th>
+            <th>Acciones</th>
+        </tr>
+        {% for u in usuarios %}
+        <tr>
+            <form action="/actualizar/{{ u.id }}" method="POST">
+                <td>{{ u.id }}</td>
+                <td><input type="text" name="nombre" value="{{ u.nombre }}"></td>
+                <td><input type="number" name="edad" value="{{ u.edad }}"></td>
+                <td>
+                    <button type="submit" class="btn-save">Guardar</button>
+                    <a href="/eliminar/{{ u.id }}" class="btn-del">Eliminar</a>
+                </td>
+            </form>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

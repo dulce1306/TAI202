@@ -16,7 +16,7 @@ usuarios = [
     {"id": 3, "nombre": "Dulce", "edad": 21},
 ]
 
-# --- ENDPOINTS DE CONSULTA ---
+# endpoints consulta
 
 @app.get("/", tags=['Inicio'])
 async def holamundo():
@@ -46,7 +46,7 @@ async def consultatodos(id: Optional[int] = None):
         return {"mensaje": "usuario no encontrado", "status": "404"}
     return {"mensaje": "No se proporciono id", "status": "200", "usuarios_totales": usuarios}
 
-# --- ENDPOINTS CRUD ---
+# endpoints crud 
 
 @app.get("/v1/usuarios/", tags=['HTTP CRUD'])
 async def leer_usuarios():
