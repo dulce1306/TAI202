@@ -1,6 +1,7 @@
 from fastapi import FastAPI, status, HTTPException
 import asyncio
 from typing import Optional
+from pydantic import BaseModel, Field 
 
 # Instancia del servidor
 app = FastAPI(
@@ -16,7 +17,18 @@ usuarios = [
     {"id": 3, "nombre": "Dulce", "edad": 21},
 ]
 
-# endpoints consulta
+# ==========================================
+# MODELO DE VALIDACIÓN PYDANTIC (BaseModel)
+# ==========================================
+class crear_usuario(BaseModel):
+    id: int = Field(..., gt=0, description="Identificador de usuario")
+    nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
+    edad: int = Field(..., ge=1, le=123, description="Edad valida entre 1 y 123")
+
+
+# ==========================================
+# ENDPOINTS DE CONSULTA
+# ==========================================
 
 @app.get("/", tags=['Inicio'])
 async def holamundo():
@@ -46,7 +58,10 @@ async def consultatodos(id: Optional[int] = None):
         return {"mensaje": "usuario no encontrado", "status": "404"}
     return {"mensaje": "No se proporciono id", "status": "200", "usuarios_totales": usuarios}
 
-# endpoints crud 
+
+# ==========================================
+# ENDPOINTS CRUD 
+# ==========================================
 
 @app.get("/v1/usuarios/", tags=['HTTP CRUD'])
 async def leer_usuarios():
@@ -56,37 +71,39 @@ async def leer_usuarios():
         "status": "200"
     }
 
+# Aplicamos el modelo "crear_usuario" en lugar de "dict"
 @app.post("/v1/usuarios/", tags=['HTTP CRUD'], status_code=status.HTTP_201_CREATED)
-async def agregar_usuarios(usuario: dict):
+async def agregar_usuarios(usuario: crear_usuario): 
     for usr in usuarios:
-        if usr["id"] == usuario.get("id"):
+        if usr["id"] == usuario.id: # Cambiamos usuario.get("id") por usuario.id
             raise HTTPException(
                 status_code=400,
-                detail=f"El id {usuario.get('id')} ya existe"
+                detail=f"El id {usuario.id} ya existe"
             )
     
-    usuarios.append(usuario) 
+    # Convertimos el modelo a diccionario antes de guardarlo en nuestra lista
+    usuarios.append(usuario.model_dump()) 
     return {
         "mensaje": "Usuario Creado",
         "Datos nuevos": usuario
     }
 
+# Aplicamos el modelo también en el PUT para asegurar que los datos actualizados sean válidos
 @app.put("/v1/usuarios/{id}", tags=['HTTP CRUD'])
-async def actualizar_usuario(id: int, usuario_actualizado: dict):
+async def actualizar_usuario(id: int, usuario_actualizado: crear_usuario):
     for index, usr in enumerate(usuarios):
         if usr["id"] == id:
-            
-            usuarios[index] = usuario_actualizado
+            usuarios[index] = usuario_actualizado.model_dump()
             usuarios[index]["id"] = id  
             return {"mensaje": "Usuario actualizado totalmente", "usuario": usuarios[index]}
     
     raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+# El PATCH lo dejamos con dict porque permite actualizaciones parciales (ej. solo enviar la edad)
 @app.patch("/v1/usuarios/{id}", tags=['HTTP CRUD'])
 async def actualizar_parcial_usuario(id: int, campos: dict):
     for usr in usuarios:
         if usr["id"] == id:
-           
             usr.update(campos)
             return {"mensaje": "Campos actualizados correctamente", "usuario": usr}
             
