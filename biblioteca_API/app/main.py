@@ -86,9 +86,9 @@ def devolver_libro(id_libro: int):
     if not libro:
         raise HTTPException(status_code=404, detail="Libro no encontrado en la base de datos")
     
-    # Conflicto 409 si el registro de préstamo ya no existe (el libro no estaba prestado)
-    if not prestamo:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El registro de préstamo no existe")
+    # NUEVA LÓGICA: Si el libro ya está disponible, significa que no hay un préstamo activo
+    if libro.estado == "disponible":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El registro de préstamo ya no existe o ya fue devuelto")
     
     # Lógica de devolución exitosa
     libro.estado = "disponible"
