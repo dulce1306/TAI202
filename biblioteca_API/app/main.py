@@ -85,17 +85,15 @@ def devolver_libro(id_libro: int):
     
     if not libro:
         raise HTTPException(status_code=404, detail="Libro no encontrado en la base de datos")
-        
-    prestamo = next((p for p in prestamos_db if p.id_libro == id_libro), None)
     
     # Conflicto 409 si el registro de préstamo ya no existe (el libro no estaba prestado)
     if not prestamo:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El registro de préstamo no existe")
     
-    # Lógica de devolución
+    # Lógica de devolución exitosa
     libro.estado = "disponible"
     return {"mensaje": "Libro devuelto con éxito"}
-
+    
 # f. Eliminar el registro de un préstamo
 @app.delete("/prestamos/{id_prestamo}", status_code=status.HTTP_200_OK)
 def eliminar_prestamo(id_prestamo: int):
