@@ -3,6 +3,7 @@ import asyncio
 from typing import Optional
 from pydantic import BaseModel, Field 
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 
 # Instancia del servidor
 app = FastAPI(
@@ -31,6 +32,8 @@ class crear_usuario(BaseModel):
 # ==========================================
 
 seciurity = HTTPBasic()
+
+
 
 # ==========================================
 # ENDPOINTS DE CONSULTA

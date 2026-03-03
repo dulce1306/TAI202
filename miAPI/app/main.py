@@ -3,6 +3,7 @@ import asyncio
 from typing import Optional
 from pydantic import BaseModel, Field 
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import secrets
 
 # Instancia del servidor
 app = FastAPI(
@@ -26,6 +27,21 @@ class crear_usuario(BaseModel):
     nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
     edad: int = Field(..., ge=1, le=123, description="Edad valida entre 1 y 123")
 
+# ==========================================
+# Seguridad HTTP BASIC
+# ==========================================
+
+seciurity = HTTPBasic()
+def verificar_peticion( credenciales: HTTPBasicCredentials = Depends(seciurity)):
+    usuario_correcto= secrets.compare_digest(credenciales.username, "dulcegarcia")
+    contrasena_correcta= secrets.compare_digest(credenciales.password, "123456")
+
+    if not(usuario_correcto and contrasena_correcta):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales no validas"
+        )
+    return credenciales.username
 
 # ==========================================
 # ENDPOINTS DE CONSULTA
@@ -111,10 +127,12 @@ async def actualizar_parcial_usuario(id: int, campos: dict):
     raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
 @app.delete("/v1/usuarios/{id}", tags=['HTTP CRUD'])
-async def eliminar_usuario(id: int):
+async def eliminar_usuario(id: int,usuarioAuth: str= Depends(verificar_peticion)):
+
     for index, usr in enumerate(usuarios):
         if usr["id"] == id:
+
             usuario_eliminado = usuarios.pop(index)
-            return {"mensaje": "Usuario eliminado exitosamente", "usuario": usuario_eliminado}
+            return {"mensaje": f"Usuario eliminado por {usuarioAuth}"}
             
     raise HTTPException(status_code=404, detail="Usuario no encontrado")
