@@ -3,8 +3,8 @@ version: '3.8'
 services:
   api:
     build: .
-    container_name: Server_FastAPI
+    container_name: api_jwt
     ports:
-      - "5000:5000"
+      - "8080:8080"
     volumes:
       - .:/app

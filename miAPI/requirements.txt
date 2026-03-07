@@ -1,2 +1,5 @@
-uvicorn[standard]
 fastapi
+uvicorn
+python-jose[cryptography]
+python-multipart
+pydantic

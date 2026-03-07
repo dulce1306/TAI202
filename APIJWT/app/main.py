@@ -2,8 +2,9 @@ from fastapi import FastAPI, status, HTTPException,Depends
 import asyncio
 from typing import Optional
 from pydantic import BaseModel, Field 
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import secrets
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from datetime import datetime, timedelta, timezone
 
 # Instancia del servidor
 app = FastAPI(
@@ -20,6 +21,30 @@ usuarios = [
 ]
 
 # ==========================================
+# CONFIGURACIÓN OAUTH2 Y JWT
+# ==========================================
+SECRET_KEY = "mi_clave_secreta_super_segura" # En producción, esta clave debe ser un valor aleatorio y seguro, y no debe estar hardcodeada
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30 # Límite máximo de 30 minutos
+
+# Esta dependencia le dice a FastAPI de dónde sacar el token (de la ruta /login)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# ============================================
+# CREACION DE TOKENS JWT
+# ============================================
+def crear_token_acceso(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# ==========================================
 # MODELO DE VALIDACIÓN PYDANTIC (BaseModel)
 # ==========================================
 class crear_usuario(BaseModel):
@@ -27,11 +52,52 @@ class crear_usuario(BaseModel):
     nombre: str = Field(..., min_length=3, max_length=50, example="Juanita")
     edad: int = Field(..., ge=1, le=123, description="Edad valida entre 1 y 123")
 
-# ==========================================
-# Seguridad HTTP BASIC
-# ==========================================
+#=============================================
+# ENDPOINT DE LOGIN PARA OBTENER EL TOKEN
+#=============================================
+@app.post("/login", tags=['Autenticación'])
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    # Validación "Dummy" para la práctica (Aquí normalmente buscarías en la BD)
+    if form_data.username != "admin" or form_data.password != "secreta":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Generar el token con expiración de 30 minutos
+    tiempo_expiracion = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    token_jwt = crear_token_acceso(
+        data={"sub": form_data.username}, expires_delta=tiempo_expiracion
+    )
+    
+    return {"access_token": token_jwt, "token_type": "bearer"}
 
-seciurity = HTTPBasic()
+#=============================================
+# FUNCION PARA VALIDAR TOKENS
+#=============================================
+
+async def obtener_usuario_actual(token: str = Depends(oauth2_scheme)):
+    # Definimos el error estándar si algo sale mal
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudieron validar las credenciales o el token ha expirado",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        # Intentamos decodificar el token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        
+        if username is None:
+            raise credentials_exception
+            
+    except JWTError:
+        # Si el token es inválido o ya expiró (pasaron los 30 minutos), cae aquí
+        raise credentials_exception
+        
+    return username
+
 
 
 
@@ -98,8 +164,14 @@ async def agregar_usuarios(usuario: crear_usuario):
     }
 
 # Aplicamos el modelo también en el PUT para asegurar que los datos actualizados sean válidos
+# se modifico el PUT para protegerlo con JWT
+# para que de esta forma solo los usuarios autenticados podrán actualizar usuarios en la lista
 @app.put("/v1/usuarios/{id}", tags=['HTTP CRUD'])
-async def actualizar_usuario(id: int, usuario_actualizado: crear_usuario):
+async def actualizar_usuario(
+    id: int, 
+    usuario_actualizado: crear_usuario, 
+    current_user: str = Depends(obtener_usuario_actual) # <-- ¡Aquí está la protección!
+):
     for index, usr in enumerate(usuarios):
         if usr["id"] == id:
             usuarios[index] = usuario_actualizado.model_dump()
@@ -108,18 +180,13 @@ async def actualizar_usuario(id: int, usuario_actualizado: crear_usuario):
     
     raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-# El PATCH lo dejamos con dict porque permite actualizaciones parciales (ej. solo enviar la edad)
-@app.patch("/v1/usuarios/{id}", tags=['HTTP CRUD'])
-async def actualizar_parcial_usuario(id: int, campos: dict):
-    for usr in usuarios:
-        if usr["id"] == id:
-            usr.update(campos)
-            return {"mensaje": "Campos actualizados correctamente", "usuario": usr}
-            
-    raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
+#Igualmente se esta modificando el delete para protegerlo con JWT
+# para que solo los usuarios autenticados podrán eliminar usuarios de la lista
 @app.delete("/v1/usuarios/{id}", tags=['HTTP CRUD'])
-async def eliminar_usuario(id: int):
+async def eliminar_usuario(
+    id: int, 
+    current_user: str = Depends(obtener_usuario_actual) # <-- ¡Aquí está la protección!
+):
     for index, usr in enumerate(usuarios):
         if usr["id"] == id:
             usuario_eliminado = usuarios.pop(index)
