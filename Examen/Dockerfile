@@ -1,18 +1,20 @@
-# Usa una imagen oficial de Python ligera
-FROM python:3.11-slim
+#importar imagen base de python
+FROM python:3.12-slim
 
-# Establece el directorio de trabajo
+#Crear en el contenedor la Carpeta Trabajo
 WORKDIR /app
 
-# Copia los requerimientos e instálalos
+#Copiar los requerimentos al contenedor
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia el resto del código
+#Instalar las dependencias
+RUN pip install --no-cache-dir -r requirements.txt 
+
+#Copia el codigo del servidor
 COPY ./app ./app 
 
-# Expone el puerto en el que correrá FastAPI
-EXPOSE 8000
+#Exponer el puerto de trabajo
+EXPOSE 5000
 
-# Comando para ejecutar la API
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+#Comando a ejecutar levantar servidor
+CMD ["uvicorn","app.main:app","--host", "0.0.0.0", "--port", "5000", "--reload"]

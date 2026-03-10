@@ -3,6 +3,8 @@ version: '3.8'
 services:
   api:
     build: .
-    container_name: mi_restaurant_api
+    container_name: Server_FastAPI_Restaurant
     ports:
-      - "8000:8000"
+      - "5000:5000"
+    volumes:
+      - .:/app
