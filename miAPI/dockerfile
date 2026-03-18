@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 5. Copiar todo el código de tu proyecto
 COPY . .
 
-# 6. Exponer el NUEVO puerto (8080 en lugar de 8000)
-EXPOSE 8080
+# 6. Exponer el NUEVO puerto (5000 en lugar de 5001)
+EXPOSE 5000
 
 # 7. Comando con el NUEVO puerto indicado para uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
